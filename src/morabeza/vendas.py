@@ -41,10 +41,24 @@ def criar_venda(linha: dict[str, str]) -> Venda:
     # TODO 2: dentro de um try, converte quantidade e preco_unitario com int()
     #         e a data com date.fromisoformat(). Se der ValueError, levanta
     #         VendaInvalida (raise VendaInvalida("...") from erro).
+    try:
+        quantidade = int(linha["quantidade"])
+        preco = int(linha["preco_unitario"])
+        data = date.fromisoformat(linha["data"])
+    except ValueError as erro:
+        raise VendaInvalida(f"{linha['venda_id']}: valor impossível de converter") from erro
+    
     # TODO 3: levanta VendaInvalida se a quantidade ou o preço não forem > 0,
     #         ou se linha["ilha"] não estiver em ILHAS_SERVIDAS.
+    if quantidade <=0:
+        raise VendaInvalida(f"{linha['venda_id']}: quantidade tem de ser positiva.")
+    if preco <=0:
+        raise VendaInvalida(f"{linha['venda_id']}: preço unitário tem de ser positivo.")
+    if linha["ilha"] not in ILHAS_SERVIDAS:
+        raise VendaInvalida(f"{linha['venda_id']}: a Morabeza não serve a ilha {linha['ilha']}")
     # TODO 4: devolve Venda(...) com os valores já convertidos.
-    raise NotImplementedError("criar_venda ainda não está feita")
+    return Venda(linha["venda_id"], data, linha["cliente_id"], linha["ilha"], linha["categoria"],
+                 quantidade, preco)
 
 
 def ler_vendas(caminho: str) -> Iterator[Venda]:
@@ -52,20 +66,32 @@ def ler_vendas(caminho: str) -> Iterator[Venda]:
     # TODO 5: abre o ficheiro e percorre csv.DictReader. Para cada linha,
     #         tenta yield criar_venda(linha); se der VendaInvalida, continue.
     #         Repara: é um gerador, por isso usa yield e não return.
-    raise NotImplementedError("ler_vendas ainda não está feita")
+    with open(caminho, encoding="utf-8") as ficheiro:
+        for linha in csv.DictReader(ficheiro):
+            try:
+                yield criar_venda(linha)
+            except VendaInvalida:
+                continue
 
 
 def contar_invalidas(caminho: str) -> int:
     """Número de linhas do ficheiro que não dão uma Venda válida."""
     # TODO 6: igual a ler_vendas, mas em vez de devolver vendas conta quantas
     #         linhas levantam VendaInvalida e devolve esse número.
-    raise NotImplementedError("contar_invalidas ainda não está feita")
+    invalidas = 0
+    with open(caminho, encoding="utf-8") as ficheiro:
+        for linha in csv.DictReader(ficheiro):
+            try:
+                criar_venda(linha)
+            except VendaInvalida:
+                invalidas += 1
+    return invalidas
 
 
 def vendas_acima(vendas: Iterable[Venda], limite: int) -> list[Venda]:
     """Vendas com total maior do que o limite, numa compreensão de lista."""
     # TODO 7: uma só linha com uma compreensão de lista: [v for v in ... if ...]
-    raise NotImplementedError("vendas_acima ainda não está feita")
+    return [v for v in vendas if v.total > limite]
 
 
 def total_por(vendas: Iterable[Venda], chave: Callable[[Venda], str]) -> dict[str, int]:
@@ -73,7 +99,11 @@ def total_por(vendas: Iterable[Venda], chave: Callable[[Venda], str]) -> dict[st
     # TODO 8: igual a faturacao_por_ilha da Sessão 1, mas a chave do dicionário
     #         é chave(v) em vez de v["ilha"]. Assim a mesma função serve para
     #         agrupar por ilha, por categoria ou por mês.
-    raise NotImplementedError("total_por ainda não está feita")
+    totais: dict[str, int] = {}
+    for v in vendas:
+        k = chave(v)
+        totais[k] = totais.get(k,0) + v.total
+    return totais
 
 
 # ---------------------------------------------------------------- Extensão (opcional)
